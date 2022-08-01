@@ -1,6 +1,6 @@
 # from sqlalchemy import db.Column, ForeignKey, db.Integer, db.String
 # from sqlalchemy.orm import relationship
-from main import db
+from gitscratch_init import db
 
 
 class Captcha(db.Model):

@@ -1,18 +1,12 @@
 import time
 import uuid
 
-from flask import Flask, g, request, session
-from flask_sqlalchemy import SQLAlchemy
+from flask import g, request, session
 
-from models import *
+from models import Captcha, User, Project
 from captcha import captcha
 
-app = Flask(__name__)
-app.secret_key = str(uuid.uuid4())
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-db = SQLAlchemy(app)
-
+from gitscratch_init import app, db
 
 @app.route("/")
 def index():
