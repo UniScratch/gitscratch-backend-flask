@@ -90,9 +90,8 @@ def auth_login():
     user._session = _uuid
     user._session_time = int(time.time())
     db.session.commit()
-    session['session'] = _uuid
-    # session will be stored in client cookie
-    return {}
+    # session['session'] = _uuid
+    return {'session': _uuid}
 
 
 @ app.route("/auth/session", methods=["GET"])
