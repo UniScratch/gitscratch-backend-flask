@@ -5,11 +5,12 @@ from flask import Flask, g, request, session
 from flask_sqlalchemy import SQLAlchemy
 
 from models import *
+from captcha import captcha
 
 app = Flask(__name__)
 app.secret_key = str(uuid.uuid4())
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
 
 
@@ -29,7 +30,7 @@ def load_logged_in_user():
     if(_session is not None):
         user = User.query.filter_by(
             _session=_session).first()
-        if (time.time() - user._session_time < 60*60):  # 1 hr
+        if (time.time() - user._session_time <= 60*60):  # 1 hr
             user._session_time = int(time.time())
             db.session.commit()
             g.user = user
@@ -42,15 +43,28 @@ def load_logged_in_user():
 @app.route("/auth/captcha", methods=["GET"])
 def auth_captcha():
     """Get captcha image"""
-    return "captcha"
+    _captcha = captcha.getCaptcha()
+    _uuid = str(uuid.uuid4())
+    db.session.add(Captcha(
+        uuid=_uuid,
+        id=_captcha['id'],
+        created_at=int(time.time())))
+    db.session.commit()
+    # print(_captcha)
+    return {"captcha_uuid": _uuid, "captcha_base64": _captcha['base64']}
 
 
-@app.route("/auth/register", methods=["POST"])
+@ app.route("/auth/register", methods=["POST"])
 def auth_register():
     """Register new user"""
     email = request.json['email']
     name = request.json['username']
     password = request.json['password']
+    captcha_uuid = request.json['captcha_uuid']
+    captcha_value = request.json['captcha_value']
+    _captcha = db.session.query(Captcha).filter_by(uuid=captcha_uuid).first()
+    if (not _captcha) or (not captcha.checkCaptcha(_captcha.id, captcha_value)) or (time.time() - _captcha.created_at > 15*60):  # 15min
+        return {"message": "Invalid captcha"}, 500
     if db.session.query(
         User.query.filter_by(email=email).exists()
     ).scalar():
@@ -64,7 +78,7 @@ def auth_register():
     return {}
 
 
-@app.route("/auth/login", methods=["POST"])
+@ app.route("/auth/login", methods=["POST"])
 def auth_login():
     """Login user"""
     email = request.json['email']
@@ -81,13 +95,22 @@ def auth_login():
     return {}
 
 
-@app.route("/auth/session", methods=["GET"])
+@ app.route("/auth/session", methods=["GET"])
 def auth_session():
     """Get user session"""
     if g.user:
         return {'data': g.user.to_json()}
     else:
         return {'message': "Unauthorized"}, 500
+
+
+@ app.after_request
+def apply_caching(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Method"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Server"] = "You Guess?"
+    return response
 
 
 if __name__ == "__main__":

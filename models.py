@@ -3,6 +3,14 @@
 from main import db
 
 
+class Captcha(db.Model):
+    __tablename__ = "captchas"
+
+    uuid = db.Column(db.String, primary_key=True)
+    id = db.Column(db.Integer)
+    created_at = db.Column(db.Integer)
+
+
 class User(db.Model):
     __tablename__ = "users"
 
@@ -15,12 +23,12 @@ class User(db.Model):
     bio = db.Column(db.String, default="")
     avatar = db.Column(db.String, default="")
     level = db.Column(db.Integer, default=0)
-    exp= db.Column(db.Integer, default=0)
+    exp = db.Column(db.Integer, default=0)
     verified = db.Column(db.Integer, default=0)
-    muted=db.Column(db.Integer, default=0)
-    banned=db.Column(db.Integer, default=0)
+    muted = db.Column(db.Integer, default=0)
+    banned = db.Column(db.Integer, default=0)
     password = db.Column(db.String)
-    readme=db.Column(db.String, default="")
+    readme = db.Column(db.String, default="")
     created_at = db.Column(db.Integer)
     _session = db.Column(db.String)
     _session_time = db.Column(db.Integer)
@@ -28,7 +36,8 @@ class User(db.Model):
 
     def to_json(self):
         if hasattr(self, '__table__'):
-            json={i.name: getattr(self, i.name) for i in self.__table__.columns}
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
             del json['password']
             del json['_session']
             del json['_session_time']
