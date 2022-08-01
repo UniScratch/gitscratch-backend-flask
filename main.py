@@ -1,18 +1,21 @@
-from models import *
-from flask import Flask, request, g, session
-from flask_sqlalchemy import SQLAlchemy
-import uuid
 import time
+import uuid
 
+from flask import Flask, g, request, session
+from flask_sqlalchemy import SQLAlchemy
+
+from models import *
 
 app = Flask(__name__)
 app.secret_key = str(uuid.uuid4())
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
 @app.route("/")
 def index():
+    """For test only"""
     if g.user:
         return g.user.name
     else:
@@ -21,6 +24,7 @@ def index():
 
 @app.before_request
 def load_logged_in_user():
+    """Check if user is logged in"""
     _session = session.get("session")
     if(_session is not None):
         user = User.query.filter_by(
@@ -37,11 +41,13 @@ def load_logged_in_user():
 
 @app.route("/auth/captcha", methods=["GET"])
 def auth_captcha():
+    """Get captcha image"""
     return "captcha"
 
 
 @app.route("/auth/register", methods=["POST"])
 def auth_register():
+    """Register new user"""
     email = request.json['email']
     name = request.json['username']
     password = request.json['password']
@@ -60,6 +66,7 @@ def auth_register():
 
 @app.route("/auth/login", methods=["POST"])
 def auth_login():
+    """Login user"""
     email = request.json['email']
     password = request.json['password']
     user = db.session.query(User).filter_by(email=email).first()
@@ -76,6 +83,7 @@ def auth_login():
 
 @app.route("/auth/session", methods=["GET"])
 def auth_session():
+    """Get user session"""
     if g.user:
         return {'data': g.user.to_json()}
     else:
