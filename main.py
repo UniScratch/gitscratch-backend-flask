@@ -1,11 +1,11 @@
 import time
 import uuid
 
-from flask import g, request, session
+from flask import g, request
 from flask import json
 from werkzeug.exceptions import HTTPException
 
-from models import Captcha, User, Project
+from models import Captcha, User
 from captcha import captcha
 
 from gitscratch_init import app, db
@@ -41,13 +41,12 @@ def load_logged_in_user():
         _session = request.headers['X-Gitscratch-Session']
     else:
         _session = None
-    if(_session != None):  # if headers has session
-        user = User.query.filter_by(
-            _session=_session).first()
-        if (user != None):  # if session is valid
-            if (time.time() - user._session_time <= 60*60):  # 1 hr
+    if _session is not None: # if headers has session
+        user = User.query.filter_by(_session=_session).first()
+        if user is not None:  # if session is valid
+            if time.time() - user._session_time <= 60 * 60:  # 1 hour
                 user._session_time = int(time.time())
-                db.session.commit()
+                db.session.push()
                 g.user = user
             else:  # session expired
                 g.user = None
@@ -59,7 +58,7 @@ def load_logged_in_user():
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
-    """Return JSON for HTTP errors. Only available for production env"""
+    """Return JSON for HTTP errors. Only available for production environment."""
     return error(str(e.code) + " " + e.name)
 
 
@@ -83,7 +82,7 @@ def auth_captcha():
     # return error()
 
 
-@ app.route("/auth/register", methods=["POST"])
+@app.route("/auth/register", methods=["POST"])
 def auth_register():
     """Register new user"""
     email = request.json['email']
@@ -107,7 +106,7 @@ def auth_register():
     return success()
 
 
-@ app.route("/auth/login", methods=["POST"])
+@app.route("/auth/login", methods=["POST"])
 def auth_login():
     """Login user"""
     email = request.json['email']
@@ -123,7 +122,7 @@ def auth_login():
     return success({'session': _uuid})
 
 
-@ app.route("/auth/session", methods=["GET"])
+@app.route("/auth/session", methods=["GET"])
 def auth_session():
     """Get user session"""
     if g.user:
@@ -132,7 +131,7 @@ def auth_session():
         return error("Unauthorized")
 
 
-@ app.route("/auth/logout", methods=["POST"])
+@app.route("/auth/logout", methods=["POST"])
 def auth_logout():
     """Logout user"""
     if g.user:
@@ -154,7 +153,7 @@ def users_info(id):
 
 
 
-@ app.after_request
+@app.after_request
 def apply_caching(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Method"] = "*"
