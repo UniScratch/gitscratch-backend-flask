@@ -64,6 +64,7 @@ def _getImg(content):
 
 def getCaptcha():
     _random_num = random.randint(0, len(data) - 1)
+    print(data[_random_num]['year'])
     return {
         "id": _random_num,
         "base64": _getImg(data[_random_num])

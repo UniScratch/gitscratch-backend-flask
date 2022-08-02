@@ -21,7 +21,8 @@ class User(db.Model):
     following = db.Column(db.Integer, default=0)
     website = db.Column(db.String, default="")
     bio = db.Column(db.String, default="")
-    avatar = db.Column(db.String, default="")
+    avatar = db.Column(
+        db.String, default="/GitScratch-icon-background-blue.svg")
     level = db.Column(db.Integer, default=0)
     exp = db.Column(db.Integer, default=0)
     verified = db.Column(db.Integer, default=0)
