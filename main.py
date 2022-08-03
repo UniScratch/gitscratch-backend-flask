@@ -5,7 +5,7 @@ from flask import g, request
 from flask import json
 from werkzeug.exceptions import HTTPException
 
-from models import Captcha, User
+from models import *
 from captcha import captcha
 
 from gitscratch_init import app, db
