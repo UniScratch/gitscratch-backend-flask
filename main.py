@@ -17,13 +17,11 @@ def error(message="Unknown error"):
          "message": message}
     )
 
-
 def success(data=None):
     return json.dumps(
         {"status": "success",
          "data": data}
     )
-
 
 @app.route("/")
 def index():
@@ -32,7 +30,6 @@ def index():
         return g.user.name
     else:
         return success()
-
 
 @app.before_request
 def load_logged_in_user():
@@ -55,12 +52,10 @@ def load_logged_in_user():
     else:  # if headers has no session
         g.user = None
 
-
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     """Return JSON for HTTP errors. Only available for production environment."""
     return error(str(e.code) + " " + e.name)
-
 
 @app.route("/auth/captcha", methods=["GET"])
 def auth_captcha():
@@ -80,7 +75,6 @@ def auth_captcha():
         }
     )
     # return error()
-
 
 @app.route("/auth/register", methods=["POST"])
 def auth_register():
@@ -105,7 +99,6 @@ def auth_register():
     db.session.commit()
     return success()
 
-
 @app.route("/auth/login", methods=["POST"])
 def auth_login():
     """Login user"""
@@ -121,7 +114,6 @@ def auth_login():
     # session['session'] = _uuid
     return success({'session': _uuid})
 
-
 @app.route("/auth/session", methods=["GET"])
 def auth_session():
     """Get user session"""
@@ -129,7 +121,6 @@ def auth_session():
         return success({'data': g.user.to_json()})
     else:
         return error("Unauthorized")
-
 
 @app.route("/auth/logout", methods=["POST"])
 def auth_logout():
@@ -142,7 +133,6 @@ def auth_logout():
     else:
         return error("Unauthorized")
 
-
 @app.route("/users/<id>/info",methods=["GET"])
 def users_info(id):
     """Get user info"""
@@ -150,8 +140,6 @@ def users_info(id):
     if not user:
         return error("Invalid id")
     return success(user.to_json())
-
-
 
 @app.after_request
 def apply_caching(response):
