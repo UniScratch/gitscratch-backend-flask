@@ -1,6 +1,7 @@
 # from sqlalchemy import db.Column, ForeignKey, db.Integer, db.String
 # from sqlalchemy.orm import relationship
 from gitscratch_init import db
+from sqlalchemy.ext.hybrid import hybrid_property
 
 
 class Captcha(db.Model):
@@ -56,6 +57,30 @@ class Project(db.Model):
     # owner_id = db.Column(db.Integer, ForeignKey("users.id"))
 
     # author = relationship("User", back_populates="projects")
+
+class Coment(db.Model):
+    __tablename__ = "comments"
+
+    id=db.Column(db.Integer, primary_key=True, index=True)
+    comment=db.Column(db.String)
+    target_type=db.Column(db.String) # project or user
+    target_id=db.Column(db.Integer) # project id or user id
+    _user=db.Column(db.Integer) # user id
+    time=db.Column(db.Integer)
+    status=db.Column(db.Integer, default=0) # 0: normal 1: deleted 2: hidden
+
+    @hybrid_property
+    def user(self):
+        return User.query.filter_by(id=self._user).first().to_json()
+
+    def to_json(self):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
+
 
 
 db.create_all()
