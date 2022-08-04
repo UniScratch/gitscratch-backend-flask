@@ -41,7 +41,7 @@ def _getImg(content):
     output_str = _line_break(output_str)
     # print(output_str)
     d_font = ImageFont.truetype(
-        font="./SourceHanSansCN-Normal.otf", size=CHAR_SIZE)
+        font="captcha/SourceHanSansCN-Normal.otf", size=CHAR_SIZE)
     # lines = output_str.count("\n")
     lines = len(output_str)
 
