@@ -1,7 +1,9 @@
 # from sqlalchemy import db.Column, ForeignKey, db.Integer, db.String
 # from sqlalchemy.orm import relationship
-from gitscratch_init import db
+import bcrypt
 from sqlalchemy.ext.hybrid import hybrid_property
+
+from gitscratch_init import db
 
 
 class Captcha(db.Model):
@@ -29,7 +31,7 @@ class User(db.Model):
     verified = db.Column(db.Integer, default=0)
     muted = db.Column(db.Integer, default=0)
     banned = db.Column(db.Integer, default=0)
-    password = db.Column(db.String)
+    _password = db.Column(db.String)
     readme = db.Column(db.String, default="")
     created_at = db.Column(db.Integer)
     _session = db.Column(db.String)
@@ -37,15 +39,30 @@ class User(db.Model):
     # projects = db.Column(db.ForeignKey(Project.))
 
     def to_json(self):
+        """Return user info as json."""
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
-            del json['password']
+            del json['_password']
             del json['_session']
             del json['_session_time']
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
+
+    @hybrid_property
+    def password(self):
+        """Return the password."""
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        """Store the password as a hash for security."""
+        self._password = bcrypt.hashpw(value.encode(), bcrypt.gensalt()).decode()
+    
+    def checkPassword(self, value):
+        """Check the password against the stored hash."""
+        return bcrypt.checkpw(value.encode(), self._password.encode())
 
 
 class Project(db.Model):

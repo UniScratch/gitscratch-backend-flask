@@ -112,7 +112,7 @@ def auth_login():
     email = request.json['email']
     password = request.json['password']
     user = db.session.query(User).filter_by(email=email).first()
-    if not user or user.password != password:
+    if not user or not user.checkPassword(password):
         return error("Invalid username or password")
     _uuid = str(uuid.uuid4())
     user._session = _uuid
