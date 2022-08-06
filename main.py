@@ -166,6 +166,17 @@ def users_info_update(id):
         return success()
     return success(user.to_json())
 
+@app.route("/users/<id>/readme", methods=["POST"])
+def users_info_update(id):
+    """Update user's readme"""
+    user = db.session.query(User).filter_by(id=id).first()
+    if not user or g.user == None:
+        return error("Invalid id")
+    elif(user.id == g.user.id):
+        user.readme = request.json['readme']
+        db.session.commit()
+        return success()
+    return success(user.to_json())
 
 @app.after_request
 def apply_caching(response):
