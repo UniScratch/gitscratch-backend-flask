@@ -1,5 +1,6 @@
 import time
 import uuid
+import hashlib
 
 from flask import g, request
 from flask import json
@@ -11,6 +12,11 @@ from captcha import captcha
 from gitscratch_init import app, db
 
 
+ALLOWED_EXTENSIONS=set(['txt','pdf','png','jpg','jpeg','gif'])
+ 
+def allowed_file(filename):
+ return '.' in filename and filename.rsplit('.',1)[1] in ALLOWED_EXTENSIONS
+ 
 def error(message="Unknown error"):
     return json.dumps(
         {"status": "error",
@@ -179,6 +185,31 @@ def users_info_update(id):
         db.session.commit()
         return success()
     return success(user.to_json())
+
+app.route("/users/<id>/avatar", methods=["POST"])
+def users_info_update(id):
+    """Update user's avatar"""
+    user = db.session.query(User).filter_by(id=id).first()
+    if not user or g.user == None:
+        return error("Invalid id")
+    elif(user.id == g.user.id):
+        files = request.files['avatar']
+        size = (256,256)
+        im = Image.open(avatar)
+        im.thumbnail(size)
+        if avatar and allow_file(avatar.filename):
+            try:
+                #file.save(os.path.join("./static/uploads/",avatar.filename))
+                #user.avatar=os.path.join("./static/uploads/",avatar.filename)
+                db.session.commit()
+            expect:
+                return error("Failed to save the picture")
+        else:
+            return error("Unsafe file type")
+        return success()
+    return success(user.to_json())
+
+# --------------------------
 
 @app.after_request
 def apply_caching(response):
