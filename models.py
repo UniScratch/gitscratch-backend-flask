@@ -84,6 +84,7 @@ class Coment(db.Model):
     target_id=db.Column(db.Integer) # project id or user id
     _user=db.Column(db.Integer) # user id
     time=db.Column(db.Integer)
+    region=db.Column(db.String, default="未知")
     status=db.Column(db.Integer, default=0) # 0: normal 1: deleted 2: hidden
 
     @hybrid_property
@@ -94,6 +95,8 @@ class Coment(db.Model):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
+            del json['_user']
+            json["user"]=self.user
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)

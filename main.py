@@ -211,6 +211,21 @@ def users_info_update(id):
 
 # --------------------------
 
+@app.route("/users/<id>/comments", methods=["GET"])
+def users_comments(id):
+    """Get user comments"""
+    user = db.session.query(Coment).filter_by(id=id).first()
+    # if not user or g.user == None:
+    #     return error("Invalid id")
+    # elif(user.id == g.user.id):
+    #     # user.name = request.json['username']
+    #     # user.email = request.json['email']
+    #     # user.password = request.json['password']
+    #     db.session.commit()
+    #     return success()
+    return success(user.to_json())
+
+
 @app.after_request
 def apply_caching(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
