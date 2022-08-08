@@ -202,7 +202,7 @@ def users_info_update(id):
                 #file.save(os.path.join("./static/uploads/",avatar.filename))
                 #user.avatar=os.path.join("./static/uploads/",avatar.filename)
                 db.session.commit()
-            expect:
+            except:
                 return error("Failed to save the picture")
         else:
             return error("Unsafe file type")
