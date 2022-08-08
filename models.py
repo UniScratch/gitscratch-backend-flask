@@ -70,10 +70,53 @@ class Project(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, index=True)
     title = db.Column(db.String, index=True)
-    description = db.Column(db.String, index=True)
-    # owner_id = db.Column(db.Integer, ForeignKey("users.id"))
+    readme = db.Column(db.String, index=True)
+    _author = db.Column(db.Integer) # user id
+    created_at = db.Column(db.Integer)
+    updated_at = db.Column(db.Integer)
 
-    # author = relationship("User", back_populates="projects")
+    @hybrid_property
+    def author(self):
+        return User.query.filter_by(id=self._author).first().to_json()
+
+    def to_json(self):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            del json['_author']
+            json["author"] = self.author
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
+
+class Project_User_Operation(db.Model):
+    __tablename__ = "project_user_operations"
+
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    type=db.Column(db.String) # star, like
+    _project = db.Column(db.Integer) # project id
+    _user = db.Column(db.Integer) # user id
+    created_at = db.Column(db.Integer)
+
+    @hybrid_property
+    def project(self):
+        return Project.query.filter_by(id=self._project).first().to_json()
+
+    @hybrid_property
+    def user(self):
+        return User.query.filter_by(id=self._user).first().to_json()
+
+    def to_json(self):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            del json['_project']
+            del json['_user']
+            json["project"] = self.project
+            json["user"] = self.user
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
 
 class Coment(db.Model):
     __tablename__ = "comments"
@@ -97,6 +140,32 @@ class Coment(db.Model):
                     for i in self.__table__.columns}
             del json['_user']
             json["user"]=self.user
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
+
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    comment = db.Column(db.String)
+    target_type = db.Column(db.String)  # project or user
+    target_id = db.Column(db.Integer)  # project id or user id
+    _user = db.Column(db.Integer)  # user id
+    time = db.Column(db.Integer)
+    status = db.Column(db.Integer, default=0)  # 0: normal 1: deleted 2: hidden
+
+    @hybrid_property
+    def user(self):
+        return User.query.filter_by(id=self._user).first().to_json()
+
+    def to_json(self):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            del json['_user']
+            json["user"] = self.user
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
