@@ -21,7 +21,7 @@ def error(message="Unknown error"):
     return json.dumps(
         {"status": "error",
          "message": message}
-    )
+    ), 500
 
 
 def success(data=None):
@@ -158,19 +158,19 @@ def users_info(id):
     return success(user.to_json())
 
 
-@app.route("/users/<id>/info", methods=["POST"])
-def users_info_update(id):
-    """Update user info"""
-    user = db.session.query(User).filter_by(id=id).first()
-    if not user or g.user == None:
-        return error("Invalid id")
-    elif(user.id == g.user.id):
-        # user.name = request.json['username']
-        # user.email = request.json['email']
-        # user.password = request.json['password']
-        db.session.commit()
-        return success()
-    return success(user.to_json())
+# @app.route("/users/<id>/info", methods=["POST"])
+# def users_info_update(id):
+#     """Update user info"""
+#     user = db.session.query(User).filter_by(id=id).first()
+#     if not user or g.user == None:
+#         return error("Invalid id")
+#     elif(user.id == g.user.id):
+#         # user.name = request.json['username']
+#         # user.email = request.json['email']
+#         # user.password = request.json['password']
+#         db.session.commit()
+#         return success()
+#     return success(user.to_json())
 
 @app.route("/users/<id>/profile", methods=["POST"])
 def users_info_update(id):
