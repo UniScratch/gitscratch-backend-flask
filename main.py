@@ -158,33 +158,42 @@ def users_info(id):
     return success(user.to_json())
 
 
-# @app.route("/users/<id>/info", methods=["POST"])
-# def users_info_update(id):
-#     """Update user info"""
-#     user = db.session.query(User).filter_by(id=id).first()
-#     if not user or g.user == None:
-#         return error("Invalid id")
-#     elif(user.id == g.user.id):
-#         # user.name = request.json['username']
-#         # user.email = request.json['email']
-#         # user.password = request.json['password']
-#         db.session.commit()
-#         return success()
-#     return success(user.to_json())
-
-@app.route("/users/<id>/profile", methods=["POST"])
+@app.route("/users/<id>/info", methods=["POST"])
 def users_info_update(id):
-    """Update user's profile"""
+    """Update user info"""
     user = db.session.query(User).filter_by(id=id).first()
     if not user or g.user == None:
         return error("Invalid id")
     elif(user.id == g.user.id):
-        user.bio = request.json['bio']
-        user.website = request.json['website']
-        user.readme = request.json['readme']
+        if 'name' in request.json:
+            user.name = request.json['name']
+        if 'email' in request.json:
+            user.email = request.json['email']
+        if 'website' in request.json:
+            user.website = request.json['website']
+        if 'bio' in request.json:
+            user.bio = request.json['bio']
+        if 'avatar' in request.json:
+            user.avatar = request.json['avatar']
+        if 'readme' in request.json:
+            user.readme = request.json['readme']
         db.session.commit()
         return success()
-    return success(user.to_json())
+    return error("Unauthorized")
+
+# @app.route("/users/<id>/profile", methods=["POST"])
+# def users_info_update(id):
+#     """Update user's profile"""
+#     user = db.session.query(User).filter_by(id=id).first()
+#     if not user or g.user == None:
+#         return error("Invalid id")
+#     elif(user.id == g.user.id):
+#         user.bio = request.json['bio']
+#         user.website = request.json['website']
+#         user.readme = request.json['readme']
+#         db.session.commit()
+#         return success()
+#     return success(user.to_json())
 
 app.route("/users/<id>/avatar", methods=["POST"])
 def users_info_update(id):
