@@ -243,10 +243,11 @@ def users_comments(id):
     """Get user comments"""
     pageSize = int(request.args['pageSize']
                    ) if 'pageSize' in request.args else 10
-    totalComments = db.session.query(Comment).filter_by(_user=id).count()
+    totalComments = db.session.query(Comment).filter_by(
+        target_type="user",target_id=id).count()
     pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
         totalComments/pageSize)
-    comments = db.session.query(Comment).filter_by(_user=id).order_by(
+    comments = db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
         Comment.time).offset((pageId-1)*pageSize).limit(pageSize).all()
     # print(comments)
     return success({'comments': [comment.to_json() for comment in comments], 'pageId': pageId, 'pageSize': pageSize, 'totalPages': math.ceil(totalComments/pageSize), 'totalComments': totalComments})
@@ -271,6 +272,40 @@ def users_comments_new(id):
     db.session.commit()
     return success()
 
+
+@app.route("/projects/<id>/comments", methods=["GET"])
+def projects_comments(id):
+    """Get project comments"""
+    pageSize = int(request.args['pageSize']
+                   ) if 'pageSize' in request.args else 10
+    totalComments = db.session.query(Comment).filter_by(
+        target_type="project", target_id=id).count()
+    pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
+        totalComments/pageSize)
+    comments = db.session.query(Comment).filter_by(target_type="project", target_id=id).order_by(
+        Comment.time).offset((pageId-1)*pageSize).limit(pageSize).all()
+    # print(comments)
+    return success({'comments': [comment.to_json() for comment in comments], 'pageId': pageId, 'pageSize': pageSize, 'totalPages': math.ceil(totalComments/pageSize), 'totalComments': totalComments})
+
+
+@app.route("/projects/<id>/comments/new", methods=["POST"])
+def projects_comments_new(id):
+    """Create new comment"""
+    comment = request.json['comment']
+    if(g.user == None):
+        return error("Unauthorized")
+    # print(comment)
+    db.session.add(Comment(
+        comment=comment,
+        target_type="project",
+        target_id=id,
+        _user=g.user.id,
+        time=int(time.time()),
+        region=g.ip_region,
+        _ip=g.ip
+    ))
+    db.session.commit()
+    return success()
 
 @app.after_request
 def apply_caching(response):
