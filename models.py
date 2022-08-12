@@ -118,7 +118,7 @@ class Project_User_Operation(db.Model):
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
 
-class Coment(db.Model):
+class Comment(db.Model):
     __tablename__ = "comments"
 
     id=db.Column(db.Integer, primary_key=True, index=True)
@@ -128,6 +128,7 @@ class Coment(db.Model):
     _user=db.Column(db.Integer) # user id
     time=db.Column(db.Integer)
     region=db.Column(db.String, default="未知")
+    _ip=db.Column(db.String, default="未知")
     status=db.Column(db.Integer, default=0) # 0: normal 1: deleted 2: hidden
 
     @hybrid_property
@@ -139,6 +140,7 @@ class Coment(db.Model):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
             del json['_user']
+            del json['_ip']
             json["user"]=self.user
             return json
         raise AssertionError(

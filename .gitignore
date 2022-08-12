@@ -131,3 +131,4 @@ dmypy.json
 
 database.db
 captcha/captcha.png
+geolite2/GeoLite2-City.mmdb

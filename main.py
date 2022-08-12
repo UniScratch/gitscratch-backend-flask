@@ -1,3 +1,5 @@
+from base64 import decode
+import math
 import time
 import uuid
 import hashlib
@@ -5,18 +7,24 @@ import hashlib
 from flask import g, request
 from flask import json
 from werkzeug.exceptions import HTTPException
+from PIL import Image
+import geoip2.database
 
 from models import *
 from captcha import captcha
 
 from gitscratch_init import app, db
 
+geoip2reader = geoip2.database.Reader(
+    'geolite2/GeoLite2-City.mmdb')
 
-ALLOWED_EXTENSIONS=set(['txt','pdf','png','jpg','jpeg','gif'])
- 
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+
+
 def allowed_file(filename):
- return '.' in filename and filename.rsplit('.',1)[1] in ALLOWED_EXTENSIONS
- 
+    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
+
 def error(message="Unknown error"):
     return json.dumps(
         {"status": "error",
@@ -43,6 +51,15 @@ def index():
 @app.before_request
 def load_logged_in_user():
     """Check if user is logged in"""
+    g.ip = request.remote_addr
+    try:
+        region = geoip2reader.city(g.ip)
+        g.ip_region = region.country.names['zh-CN']+" " + \
+            region.subdivisions.most_specific.names['zh-CN'] + \
+            " "+region.city.names['zh-CN']
+    except:
+        g.ip_region = '未知'
+    # print(g.ip_region)
     if 'X-Gitscratch-Session' in request.headers:
         _session = request.headers['X-Gitscratch-Session']
     else:
@@ -195,44 +212,64 @@ def users_info_update(id):
 #         return success()
 #     return success(user.to_json())
 
-app.route("/users/<id>/avatar", methods=["POST"])
-def users_info_update(id):
-    """Update user's avatar"""
-    user = db.session.query(User).filter_by(id=id).first()
-    if not user or g.user == None:
-        return error("Invalid id")
-    elif(user.id == g.user.id):
-        files = request.files['avatar']
-        size = (256,256)
-        im = Image.open(avatar)
-        im.thumbnail(size)
-        if avatar and allow_file(avatar.filename):
-            try:
-                #file.save(os.path.join("./static/uploads/",avatar.filename))
-                #user.avatar=os.path.join("./static/uploads/",avatar.filename)
-                db.session.commit()
-            except:
-                return error("Failed to save the picture")
-        else:
-            return error("Unsafe file type")
-        return success()
-    return success(user.to_json())
+# app.route("/users/<id>/avatar", methods=["POST"])
+# def users_info_update(id):
+#     """Update user's avatar"""
+#     user = db.session.query(User).filter_by(id=id).first()
+#     if not user or g.user == None:
+#         return error("Invalid id")
+#     elif(user.id == g.user.id):
+#         files = request.files['avatar']
+#         size = (256,256)
+#         im = Image.open(avatar)
+#         im.thumbnail(size)
+#         if avatar and allow_file(avatar.filename):
+#             try:
+#                 #file.save(os.path.join("./static/uploads/",avatar.filename))
+#                 #user.avatar=os.path.join("./static/uploads/",avatar.filename)
+#                 db.session.commit()
+#             except:
+#                 return error("Failed to save the picture")
+#         else:
+#             return error("Unsafe file type")
+#         return success()
+#     return success(user.to_json())
 
 # --------------------------
+
 
 @app.route("/users/<id>/comments", methods=["GET"])
 def users_comments(id):
     """Get user comments"""
-    user = db.session.query(Coment).filter_by(id=id).first()
-    # if not user or g.user == None:
-    #     return error("Invalid id")
-    # elif(user.id == g.user.id):
-    #     # user.name = request.json['username']
-    #     # user.email = request.json['email']
-    #     # user.password = request.json['password']
-    #     db.session.commit()
-    #     return success()
-    return success(user.to_json())
+    pageSize = int(request.args['pageSize']
+                   ) if 'pageSize' in request.args else 10
+    totalComments = db.session.query(Comment).filter_by(_user=id).count()
+    pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
+        totalComments/pageSize)
+    comments = db.session.query(Comment).filter_by(_user=id).order_by(
+        Comment.time).offset((pageId-1)*pageSize).limit(pageSize).all()
+    # print(comments)
+    return success({'comments': [comment.to_json() for comment in comments], 'pageId': pageId, 'pageSize': pageSize, 'totalPages': math.ceil(totalComments/pageSize), 'totalComments': totalComments})
+
+
+@app.route("/users/<id>/comments/new", methods=["POST"])
+def users_comments_new(id):
+    """Create new comment"""
+    comment = request.json['comment']
+    if(g.user == None):
+        return error("Unauthorized")
+    # print(comment)
+    db.session.add(Comment(
+        comment=comment,
+        target_type="user",
+        target_id=id,
+        _user=g.user.id,
+        time=int(time.time()),
+        region=g.ip_region,
+        _ip=g.ip
+    ))
+    db.session.commit()
+    return success()
 
 
 @app.after_request

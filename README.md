@@ -6,6 +6,7 @@ GitScratch 的社区后端。
 ```shell
 pip install -r requirements.txt
 ```
+请自行下载 MaxMind `GeoLite2-City.mmdb` 文件，并将其放置在 `geolite2` 目录下。
 
 ## 启动 / Start
 如果你是Linux：
@@ -27,5 +28,5 @@ sudo sh ./start_dev.sh
 
 以管理员身份运行`start_dev.cmd`
 
-## TODU
+## TODO
 ...
