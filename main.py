@@ -51,12 +51,16 @@ def index():
 @app.before_request
 def load_logged_in_user():
     """Check if user is logged in"""
-    g.ip = request.remote_addr
+    # print(request.headers)
+    if ('X-Real-IP' in request.headers):
+        g.ip = request.headers['X-Real-IP']
+    else:
+        g.ip = request.remote_addr
     try:
         region = geoip2reader.city(g.ip)
         g.ip_region = region.country.names['zh-CN']+" " + \
-            region.subdivisions.most_specific.names['zh-CN'] + \
-            " "+region.city.names['zh-CN']
+            region.subdivisions.most_specific.names['zh-CN']
+        # +region.city.names['zh-CN']
     except:
         g.ip_region = '未知'
     # print(g.ip_region)
@@ -244,7 +248,7 @@ def users_comments(id):
     pageSize = int(request.args['pageSize']
                    ) if 'pageSize' in request.args else 10
     totalComments = db.session.query(Comment).filter_by(
-        target_type="user",target_id=id).count()
+        target_type="user", target_id=id).count()
     pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
         totalComments/pageSize)
     comments = db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
@@ -306,6 +310,7 @@ def projects_comments_new(id):
     ))
     db.session.commit()
     return success()
+
 
 @app.after_request
 def apply_caching(response):
