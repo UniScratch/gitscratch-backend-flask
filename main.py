@@ -245,16 +245,17 @@ def users_info_update(id):
 @app.route("/users/<id>/comments", methods=["GET"])
 def users_comments(id):
     """Get user comments"""
-    pageSize = int(request.args['pageSize']
-                   ) if 'pageSize' in request.args else 10
-    totalComments = db.session.query(Comment).filter_by(
-        target_type="user", target_id=id).count()
-    pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
-        totalComments/pageSize)
-    comments = db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
-        Comment.time).offset((pageId-1)*pageSize).limit(pageSize).all()
-    # print(comments)
-    return success({'comments': [comment.to_json() for comment in comments], 'pageId': pageId, 'pageSize': pageSize, 'totalPages': math.ceil(totalComments/pageSize), 'totalComments': totalComments})
+    startTime = time.time()
+    pageSize = 10  # once this value is changed, the database should be reset
+    query = db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
+        Comment.time)
+    pageId = int(request.args['pageId']
+                 ) if 'pageId' in request.args else query.paginate(per_page=10, error_out=False).pages
+    pagination = query.paginate(page=pageId, per_page=10, error_out=False)
+    comments = pagination.items
+    _comments = [comment.to_json() for comment in comments]
+    print(time.time()-startTime)
+    return success({'comments': _comments, 'pageId': pageId, 'pageSize': pageSize, 'totalPages': pagination.pages})
 
 
 @app.route("/users/<id>/comments/new", methods=["POST"])
@@ -263,11 +264,13 @@ def users_comments_new(id):
     comment = request.json['comment']
     if(g.user == None):
         return error("Unauthorized")
-    # print(comment)
     db.session.add(Comment(
         comment=comment,
+        page_id=db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
+            Comment.time).count()//10+1,
         target_type="user",
         target_id=id,
+        _reply=request.json['reply'] if 'reply' in request.json else 0,
         _user=g.user.id,
         time=int(time.time()),
         region=g.ip_region,
@@ -275,6 +278,27 @@ def users_comments_new(id):
     ))
     db.session.commit()
     return success()
+
+
+@app.route("/users/<id>/comments", methods=["POST"])
+def users_comments_update(id):
+    """Update comment"""
+    user = db.session.query(User).filter_by(id=id).first()
+    if not user or g.user == None:
+        return error("Invalid id")
+    elif(user.id == g.user.id):
+        id = request.json['id']
+        comment = db.session.query(Comment).filter_by(id=id).first()
+        if not comment:
+            return error("Invalid comment id")
+        else:
+            if('comment' in request.json):
+                comment.comment = request.json['comment']
+            if('status' in request.json):
+                comment.status = request.json['status']
+            db.session.commit()
+            return success()
+    return error("Unauthorized")
 
 
 @app.route("/projects/<id>/comments", methods=["GET"])
@@ -318,6 +342,8 @@ def apply_caching(response):
     response.headers["Access-Control-Allow-Method"] = "*"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Server"] = "Python with Super Cow Powers"
+    if (g.user == None):
+        response.headers['X-GitScratch-User'] = 'None'
     return response
 
 

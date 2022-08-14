@@ -1,5 +1,6 @@
 # from sqlalchemy import db.Column, ForeignKey, db.Integer, db.String
 # from sqlalchemy.orm import relationship
+from email.policy import default
 import bcrypt
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -20,6 +21,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, index=True)
     name = db.Column(db.String)
     email = db.Column(db.String, unique=True, index=True)
+    tag = db.Column(db.String, default="")
+    tag_color = db.Column(db.String, default="#2196F3")
     follower = db.Column(db.Integer, default=0)
     following = db.Column(db.Integer, default=0)
     website = db.Column(db.String, default="")
@@ -31,6 +34,7 @@ class User(db.Model):
     verified = db.Column(db.Integer, default=0)
     muted = db.Column(db.Integer, default=0)
     banned = db.Column(db.Integer, default=0)
+    permission = db.Column(db.Integer, default=0)
     _password = db.Column(db.String)
     readme = db.Column(db.String, default="")
     created_at = db.Column(db.Integer)
@@ -123,8 +127,10 @@ class Comment(db.Model):
 
     id=db.Column(db.Integer, primary_key=True, index=True)
     comment=db.Column(db.String)
+    page_id=db.Column(db.Integer)
     target_type=db.Column(db.String) # project or user
     target_id=db.Column(db.Integer) # project id or user id
+    _reply = db.Column(db.Integer, default=0) # comment id
     _user=db.Column(db.Integer) # user id
     time=db.Column(db.Integer)
     region=db.Column(db.String, default="未知")
@@ -135,13 +141,25 @@ class Comment(db.Model):
     def user(self):
         return User.query.filter_by(id=self._user).first().to_json()
 
-    def to_json(self):
+    @hybrid_property
+    def reply(self):
+        if(self._reply==0):
+            return None
+        else:
+            return Comment.query.filter_by(id=self._reply).first().to_json(with_reply=False)
+
+    def to_json(self, with_reply=True):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
             del json['_user']
             del json['_ip']
+            del json['_reply']
             json["user"]=self.user
+            if(with_reply):
+                json["reply"]=self.reply
+            else:
+                json['reply']=None
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
