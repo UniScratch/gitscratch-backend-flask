@@ -287,8 +287,8 @@ def users_comments_update(id):
     if not user or g.user == None:
         return error("Invalid id")
     elif(user.id == g.user.id):
-        id = request.json['id']
-        comment = db.session.query(Comment).filter_by(id=id).first()
+        comment_id = request.json['id']
+        comment = db.session.query(Comment).filter_by(id=comment_id).first()
         if not comment:
             return error("Invalid comment id")
         else:
