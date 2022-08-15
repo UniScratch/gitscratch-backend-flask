@@ -34,7 +34,7 @@ class User(db.Model):
     verified = db.Column(db.Integer, default=0)
     muted = db.Column(db.Integer, default=0)
     banned = db.Column(db.Integer, default=0)
-    permission = db.Column(db.Integer, default=0)
+    permission = db.Column(db.String, default='user')
     _password = db.Column(db.String)
     readme = db.Column(db.String, default="")
     created_at = db.Column(db.Integer)
