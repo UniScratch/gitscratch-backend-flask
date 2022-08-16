@@ -1,1 +1,1 @@
-FLASK_APP=main.py FLASK_ENV=development flask run --port 3000
+FLASK_APP=main.py FLASK_DEBUG=1 flask run --port 3000
