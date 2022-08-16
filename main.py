@@ -202,6 +202,20 @@ def users_info_update(id):
         return success()
     return error("Unauthorized")
 
+
+def getProjects(target_id, args):
+    query = db.session.query(Project).filter_by(_author=target_id).order_by(
+        Project.created_at)
+    projects = query.all()
+    _projects = [comment.to_json() for comment in projects]
+    # print(time.time()-startTime)
+    return success({'projects': _projects, 'totalProjects': query.count()})
+
+@app.route("/users/<id>/projects", methods=["GET"])
+def users_projects(id):
+    """Get user projects"""
+    return getProjects(target_id=id, args=request.args)
+
 # @app.route("/users/<id>/profile", methods=["POST"])
 # def users_info_update(id):
 #     """Update user's profile"""
@@ -241,6 +255,36 @@ def users_info_update(id):
 
 # --------------------------
 
+
+@app.route("/projects/<id>/info", methods=["GET"])
+def projects_info(id):
+    """Get project info"""
+    project = db.session.query(Project).filter_by(id=id).first()
+    if not project:
+        return error("Invalid id")
+    return success(project.to_json())
+
+
+@app.route("/projects/<id>/info", methods=["POST"])
+def projects_info_update(id):
+    """Update project info"""
+    project = db.session.query(Project).filter_by(id=id).first()
+    if not project or g.user == None:
+        return error("Invalid id")
+    elif(project.id == g.user.id):
+        if 'title' in request.json:
+            project.title = request.json['title']
+        if 'readme' in request.json:
+            project.readme = request.json['readme']
+        if 'source' in request.json:
+            project.source = request.json['source']
+        if 'public' in request.json:
+            project.public = request.json['public']
+        if 'status' in request.json:
+            project.status = request.json['status']
+        db.session.commit()
+        return success()
+    return error("Unauthorized")
 
 def getComments(target_type, target_id, args):
     pageSize = 10  # once this value is changed, the database should be reset

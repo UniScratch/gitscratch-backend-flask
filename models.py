@@ -75,6 +75,9 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True, index=True)
     title = db.Column(db.String, index=True)
     readme = db.Column(db.String, index=True)
+    public = db.Column(db.Integer, default=0) # 0: private, 1: public
+    source = db.Column(db.Integer, default=0) # 0: open, 1: readonly, 2: close
+    status = db.Column(db.Integer, default=0) # 0: normal, 1: deleted, 2: archived
     _author = db.Column(db.Integer) # user id
     created_at = db.Column(db.Integer)
     updated_at = db.Column(db.Integer)
@@ -83,12 +86,27 @@ class Project(db.Model):
     def author(self):
         return User.query.filter_by(id=self._author).first().to_json()
 
+    @hybrid_property
+    def like(self):
+        return Project_User_Operation.query.filter_by(_project=self.id, type="like").count()
+
+    @hybrid_property
+    def star(self):
+        return Project_User_Operation.query.filter_by(_project=self.id, type="star").count()
+
+    @hybrid_property
+    def view(self):
+        return Project_User_Operation.query.filter_by(_project=self.id, type="view").count()
+
     def to_json(self):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
             del json['_author']
             json["author"] = self.author
+            json['like']= self.like
+            json['star']= self.star
+            json['view']= self.view
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
