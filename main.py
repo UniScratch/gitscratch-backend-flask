@@ -242,35 +242,29 @@ def users_info_update(id):
 # --------------------------
 
 
-@app.route("/users/<id>/comments", methods=["GET"])
-def users_comments(id):
-    """Get user comments"""
-    startTime = time.time()
+def getComments(target_type, target_id, args):
     pageSize = 10  # once this value is changed, the database should be reset
-    query = db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
+    query = db.session.query(Comment).filter_by(target_type=target_type, target_id=target_id).order_by(
         Comment.time)
-    pageId = int(request.args['pageId']
-                 ) if 'pageId' in request.args else query.paginate(per_page=10, error_out=False).pages
+    pageId = int(args['pageId']
+                 ) if 'pageId' in args else query.paginate(per_page=10, error_out=False).pages
     pagination = query.paginate(page=pageId, per_page=10, error_out=False)
     comments = pagination.items
     _comments = [comment.to_json() for comment in comments]
-    print(time.time()-startTime)
-    return success({'comments': _comments, 'pageId': pageId, 'pageSize': pageSize, 'totalPages': pagination.pages})
+    # print(time.time()-startTime)
+    return success({'comments': _comments, 'pageId': pageId, 'pageSize': pageSize, 'totalPages': pagination.pages, 'totalComments': query.count()})
 
 
-@app.route("/users/<id>/comments/new", methods=["POST"])
-def users_comments_new(id):
-    """Create new comment"""
-    comment = request.json['comment']
+def newComment(target_type, target_id, request_json):
     if(g.user == None):
         return error("Unauthorized")
     db.session.add(Comment(
-        comment=comment,
-        page_id=db.session.query(Comment).filter_by(target_type="user", target_id=id).order_by(
+        comment=request_json['comment'],
+        page_id=db.session.query(Comment).filter_by(target_type=target_type, target_id=target_id).order_by(
             Comment.time).count()//10+1,
-        target_type="user",
-        target_id=id,
-        _reply=request.json['reply'] if 'reply' in request.json else 0,
+        target_type=target_type,
+        target_id=target_id,
+        _reply=request_json['reply'] if 'reply' in request_json else 0,
         _user=g.user.id,
         time=int(time.time()),
         region=g.ip_region,
@@ -280,60 +274,59 @@ def users_comments_new(id):
     return success()
 
 
-@app.route("/users/<id>/comments", methods=["POST"])
-def users_comments_update(id):
-    """Update comment"""
-    user = db.session.query(User).filter_by(id=id).first()
+def updateComment(target_type, target_id, request_json):
+    user = db.session.query(User).filter_by(id=target_id).first()
     if not user or g.user == None:
         return error("Invalid id")
     elif(user.id == g.user.id):
-        comment_id = request.json['id']
+        comment_id = request_json['id']
         comment = db.session.query(Comment).filter_by(id=comment_id).first()
         if not comment:
             return error("Invalid comment id")
         else:
-            if('comment' in request.json):
-                comment.comment = request.json['comment']
-            if('status' in request.json):
-                comment.status = request.json['status']
+            if('comment' in request_json):
+                comment.comment = request_json['comment']
+            if('status' in request_json):
+                comment.status = request_json['status']
             db.session.commit()
             return success()
     return error("Unauthorized")
 
 
+@app.route("/users/<id>/comments", methods=["GET"])
+def users_comments(id):
+    """Get user comments"""
+    return getComments(target_type="user", target_id=id, args=request.args)
+
+
+@app.route("/users/<id>/comments/new", methods=["POST"])
+def users_comments_new(id):
+    """Create new comment"""
+    return newComment(target_type='user', target_id=id, request_json=request.json)
+
+
+@app.route("/users/<id>/comments", methods=["POST"])
+def users_comments_update(id):
+    """Update comment"""
+    return updateComment(target_type='user', target_id=id, request_json=request.json)
+
+
 @app.route("/projects/<id>/comments", methods=["GET"])
 def projects_comments(id):
     """Get project comments"""
-    pageSize = int(request.args['pageSize']
-                   ) if 'pageSize' in request.args else 10
-    totalComments = db.session.query(Comment).filter_by(
-        target_type="project", target_id=id).count()
-    pageId = int(request.args['pageId']) if 'pageId' in request.args else math.ceil(
-        totalComments/pageSize)
-    comments = db.session.query(Comment).filter_by(target_type="project", target_id=id).order_by(
-        Comment.time).offset((pageId-1)*pageSize).limit(pageSize).all()
-    # print(comments)
-    return success({'comments': [comment.to_json() for comment in comments], 'pageId': pageId, 'pageSize': pageSize, 'totalPages': math.ceil(totalComments/pageSize), 'totalComments': totalComments})
+    return getComments(target_type="project", target_id=id, args=request.args)
 
 
 @app.route("/projects/<id>/comments/new", methods=["POST"])
 def projects_comments_new(id):
     """Create new comment"""
-    comment = request.json['comment']
-    if(g.user == None):
-        return error("Unauthorized")
-    # print(comment)
-    db.session.add(Comment(
-        comment=comment,
-        target_type="project",
-        target_id=id,
-        _user=g.user.id,
-        time=int(time.time()),
-        region=g.ip_region,
-        _ip=g.ip
-    ))
-    db.session.commit()
-    return success()
+    return newComment(target_type='project', target_id=id, request_json=request.json)
+
+
+@app.route("/projects/<id>/comments", methods=["POST"])
+def projects_comments_update(id):
+    """Update comment"""
+    return updateComment(target_type='project', target_id=id, request_json=request.json)
 
 
 @app.after_request
