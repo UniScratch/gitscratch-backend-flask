@@ -62,8 +62,9 @@ class User(db.Model):
     @password.setter
     def password(self, value):
         """Store the password as a hash for security."""
-        self._password = bcrypt.hashpw(value.encode(), bcrypt.gensalt()).decode()
-    
+        self._password = bcrypt.hashpw(
+            value.encode(), bcrypt.gensalt()).decode()
+
     def checkPassword(self, value):
         """Check the password against the stored hash."""
         return bcrypt.checkpw(value.encode(), self._password.encode())
@@ -75,10 +76,11 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True, index=True)
     title = db.Column(db.String, index=True)
     readme = db.Column(db.String, index=True)
-    public = db.Column(db.Integer, default=0) # 0: private, 1: public
-    source = db.Column(db.Integer, default=0) # 0: open, 1: readonly, 2: close
-    status = db.Column(db.Integer, default=0) # 0: normal, 1: deleted, 2: archived
-    _author = db.Column(db.Integer) # user id
+    public = db.Column(db.Integer, default=0)  # 0: private, 1: public
+    source = db.Column(db.Integer, default=0)  # 0: open, 1: readonly, 2: close
+    # 0: normal, 1: deleted, 2: archived
+    status = db.Column(db.Integer, default=0)
+    _author = db.Column(db.Integer)  # user id
     created_at = db.Column(db.Integer)
     updated_at = db.Column(db.Integer)
 
@@ -88,41 +90,67 @@ class Project(db.Model):
 
     @hybrid_property
     def like(self):
-        return Project_User_Operation.query.filter_by(_project=self.id, type="like").count()
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like").count()
+
+    def is_liked(self, user=None):
+        if user is None:
+            return False
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like", _user=user.id).count() > 0
 
     @hybrid_property
     def star(self):
-        return Project_User_Operation.query.filter_by(_project=self.id, type="star").count()
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star").count()
+
+    def is_starred(self, user=None):
+        if user is None:
+            return False
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star", _user=user.id).count() > 0
 
     @hybrid_property
     def view(self):
-        return Project_User_Operation.query.filter_by(_project=self.id, type="view").count()
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view").count()
 
-    def to_json(self):
+    def is_viewed(self, user=None):
+        if user is None:
+            return False
+        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view", _user=user.id).count() > 0
+
+    def to_json(self, user=None):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
             del json['_author']
             json["author"] = self.author
-            json['like']= self.like
-            json['star']= self.star
-            json['view']= self.view
+            json['like'] = self.like
+            json['star'] = self.star
+            json['view'] = self.view
+            json['is_liked'] = self.is_liked(user)
+            json['is_starred'] = self.is_starred(user)
+            json['is_viewed'] = self.is_viewed(user)
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
 
-class Project_User_Operation(db.Model):
-    __tablename__ = "project_user_operations"
+
+class User_Operation(db.Model):
+    __tablename__ = "user_operations"
 
     id = db.Column(db.Integer, primary_key=True, index=True)
-    type=db.Column(db.String) # star, like
-    _project = db.Column(db.Integer) # project id
-    _user = db.Column(db.Integer) # user id
+    # project.star, project.like, project.view, user.signin, etc.
+    type = db.Column(db.String)
+    _target_type = db.Column(db.String)  # project, user
+    _target_id = db.Column(db.Integer)
+    _user = db.Column(db.Integer)  # user id
     created_at = db.Column(db.Integer)
 
     @hybrid_property
-    def project(self):
-        return Project.query.filter_by(id=self._project).first().to_json()
+    def target(self):
+        if(self._target_type == "project"):
+            return Project.query.filter_by(id=self._target_id).first().to_json()
+        elif(self._target_type == "user"):
+            return User.query.filter_by(id=self._target_id).first().to_json()
+        else:
+            return None
 
     @hybrid_property
     def user(self):
@@ -132,36 +160,47 @@ class Project_User_Operation(db.Model):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
-            del json['_project']
+            del json['_target_type']
+            del json['_target_id']
             del json['_user']
-            json["project"] = self.project
+            json["target"] = self.target
             json["user"] = self.user
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
 
+
 class Comment(db.Model):
     __tablename__ = "comments"
 
-    id=db.Column(db.Integer, primary_key=True, index=True)
-    comment=db.Column(db.String)
-    page_id=db.Column(db.Integer)
-    target_type=db.Column(db.String) # project or user
-    target_id=db.Column(db.Integer) # project id or user id
-    _reply = db.Column(db.Integer, default=0) # comment id
-    _user=db.Column(db.Integer) # user id
-    time=db.Column(db.Integer)
-    region=db.Column(db.String, default="未知")
-    _ip=db.Column(db.String, default="未知")
-    status=db.Column(db.Integer, default=0) # 0: normal 1: deleted 2: hidden
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    comment = db.Column(db.String)
+    page_id = db.Column(db.Integer)
+    target_type = db.Column(db.String)  # project or user
+    target_id = db.Column(db.Integer)  # project id or user id
+    _reply = db.Column(db.Integer, default=0)  # comment id
+    _user = db.Column(db.Integer)  # user id
+    time = db.Column(db.Integer)
+    region = db.Column(db.String, default="未知")
+    _ip = db.Column(db.String, default="未知")
+    status = db.Column(db.Integer, default=0)  # 0: normal 1: deleted 2: hidden
 
     @hybrid_property
     def user(self):
         return User.query.filter_by(id=self._user).first().to_json()
 
     @hybrid_property
+    def target(self):
+        if(self.target_type == "project"):
+            return Project.query.filter_by(id=self.target_id).first().to_json()
+        elif(self.target_type == "user"):
+            return User.query.filter_by(id=self.target_id).first().to_json()
+        else:
+            return None
+
+    @hybrid_property
     def reply(self):
-        if(self._reply==0):
+        if(self._reply == 0):
             return None
         else:
             return Comment.query.filter_by(id=self._reply).first().to_json(with_reply=False)
@@ -173,11 +212,12 @@ class Comment(db.Model):
             del json['_user']
             del json['_ip']
             del json['_reply']
-            json["user"]=self.user
+            json["user"] = self.user
+            json["target"] = self.target
             if(with_reply):
-                json["reply"]=self.reply
+                json["reply"] = self.reply
             else:
-                json['reply']=None
+                json['reply'] = None
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
@@ -207,7 +247,6 @@ class Notification(db.Model):
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
-
 
 
 db.create_all()

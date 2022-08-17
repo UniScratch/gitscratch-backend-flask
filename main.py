@@ -262,7 +262,32 @@ def projects_info(id):
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
         return error("Invalid id")
-    return success(project.to_json())
+    return success(project.to_json(user=g.user))
+
+
+@app.route("/projects/<id>/operation", methods=["POST"])
+def projects_operation(id):
+    """Add project operation"""
+    project = db.session.query(Project).filter_by(id=id).first()
+    if not project:
+        return error("Invalid id")
+    if not g.user:
+        return error("Unauthorized")
+    operation_type=request.json['type']
+    if(operation_type in ['project.view', 'project.star', 'project.like']):
+        operation=User_Operation.query.filter_by(
+            _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)  # project.view, project.star, project.like
+        if(operation.count() > 0):
+            operation.delete()
+            db.session.commit()
+            return success()
+        else:
+            operation = User_Operation(
+                _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)
+            db.session.add(operation)
+            db.session.commit()
+            return success()
+    return error("Invalid operation type")
 
 
 @app.route("/projects/<id>/info", methods=["POST"])
