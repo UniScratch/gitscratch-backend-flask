@@ -3,8 +3,9 @@ import math
 import time
 import uuid
 import hashlib
+import os
 
-from flask import g, request
+from flask import g, request,send_from_directory
 from flask import json
 from werkzeug.exceptions import HTTPException
 from PIL import Image
@@ -19,6 +20,7 @@ geoip2reader = geoip2.database.Reader(
     'geolite2/GeoLite2-City.mmdb')
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+ASSETS_FOLDER = 'assets'
 
 
 def allowed_file(filename):
@@ -401,6 +403,22 @@ def projects_comments_new(id):
 def projects_comments_update(id):
     """Update comment"""
     return updateComment(target_type='project', target_id=id, request_json=request.json)
+
+@app.route('/assets/upload', methods=['POST'])
+def assets_upload():
+        f = request.files['file']
+        ext = f.filename.rsplit('.', 1)[1]
+        md5 = hashlib.md5(f.read()).hexdigest()
+        filename = md5 + '.' + ext
+        filepath=os.path.join(ASSETS_FOLDER, filename)
+        if not os.path.isfile(filepath):
+            f.seek(0)
+            f.save(filepath)
+        return success({'filename': filename})
+
+@app.route('/assets/<filename>', methods=['GET'])
+def assets_get(filename):
+    return send_from_directory(ASSETS_FOLDER, filename)
 
 
 @app.after_request
