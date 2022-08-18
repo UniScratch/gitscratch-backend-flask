@@ -32,6 +32,13 @@ def error(message="Unknown error"):
     ), 500
 
 
+def unauthorized(message="Unauthorized"):
+    return json.dumps(
+        {"status": "error",
+         "message": message}
+    ), 401
+
+
 def success(data=None):
     return json.dumps(
         {"status": "success",
@@ -155,7 +162,7 @@ def auth_session():
     if g.user:
         return success({'data': g.user.to_json()})
     else:
-        return error("Unauthorized")
+        return unauthorized()
 
 
 @app.route("/auth/logout", methods=["POST"])
@@ -165,9 +172,7 @@ def auth_logout():
         g.user._session = ""
         g.user._session_time = 0
         db.session.commit()
-        return success()
-    else:
-        return error("Unauthorized")
+    return success()
 
 
 @app.route("/users/<id>/info", methods=["GET"])
@@ -200,7 +205,7 @@ def users_info_update(id):
             user.readme = request.json['readme']
         db.session.commit()
         return success()
-    return error("Unauthorized")
+    return unauthorized()
 
 
 def getProjects(target_id, args):
@@ -272,7 +277,7 @@ def projects_operation(id):
     if not project:
         return error("Invalid id")
     if not g.user:
-        return error("Unauthorized")
+        return unauthorized()
     operation_type=request.json['type']
     if(operation_type in ['project.view', 'project.star', 'project.like']):
         operation=User_Operation.query.filter_by(
@@ -309,7 +314,7 @@ def projects_info_update(id):
             project.status = request.json['status']
         db.session.commit()
         return success()
-    return error("Unauthorized")
+    return unauthorized()
 
 def getComments(target_type, target_id, args):
     pageSize = 10  # once this value is changed, the database should be reset
@@ -326,7 +331,7 @@ def getComments(target_type, target_id, args):
 
 def newComment(target_type, target_id, request_json):
     if(g.user == None):
-        return error("Unauthorized")
+        return unauthorized()
     db.session.add(Comment(
         comment=request_json['comment'],
         page_id=db.session.query(Comment).filter_by(target_type=target_type, target_id=target_id).order_by(
@@ -359,7 +364,7 @@ def updateComment(target_type, target_id, request_json):
                 comment.status = request_json['status']
             db.session.commit()
             return success()
-    return error("Unauthorized")
+    return unauthorized()
 
 
 @app.route("/users/<id>/comments", methods=["GET"])
