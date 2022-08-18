@@ -29,7 +29,7 @@ sudo sh ./start_dev.sh
 以管理员身份运行`start_dev.cmd`
 
 ## TODO
-- [ ] 头像上传
+- [x] 头像上传
 - [ ] 作品保存
 - [ ] 作品发布
 - [ ] 作品加密
