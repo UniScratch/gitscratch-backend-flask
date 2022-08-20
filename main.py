@@ -5,7 +5,7 @@ import uuid
 import hashlib
 import os
 
-from flask import g, request,send_from_directory
+from flask import g, request, send_from_directory
 from flask import json
 from werkzeug.exceptions import HTTPException
 from PIL import Image
@@ -21,6 +21,7 @@ geoip2reader = geoip2.database.Reader(
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 ASSETS_FOLDER = 'assets'
+COMMITS_FOLDER = 'commits'
 
 
 def allowed_file(filename):
@@ -210,57 +211,48 @@ def users_info_update(id):
     return unauthorized()
 
 
-def getProjects(target_id, args):
-    query = db.session.query(Project).filter_by(_author=target_id).order_by(
-        Project.created_at)
+def getProjects(target_id):
+    # query = db.session.query(Project).filter_by(_author=target_id).order_by(
+    #     Project.created_at)
+    query = db.session.query(Project).filter_by(_author=target_id)
     projects = query.all()
-    _projects = [comment.to_json() for comment in projects]
+    _projects = [project.to_json() for project in projects]
     # print(time.time()-startTime)
     return success({'projects': _projects, 'totalProjects': query.count()})
+
 
 @app.route("/users/<id>/projects", methods=["GET"])
 def users_projects(id):
     """Get user projects"""
-    return getProjects(target_id=id, args=request.args)
+    return getProjects(target_id=id)
 
-# @app.route("/users/<id>/profile", methods=["POST"])
-# def users_info_update(id):
-#     """Update user's profile"""
-#     user = db.session.query(User).filter_by(id=id).first()
-#     if not user or g.user == None:
-#         return error("Invalid id")
-#     elif(user.id == g.user.id):
-#         user.bio = request.json['bio']
-#         user.website = request.json['website']
-#         user.readme = request.json['readme']
-#         db.session.commit()
-#         return success()
-#     return success(user.to_json())
 
-# app.route("/users/<id>/avatar", methods=["POST"])
-# def users_info_update(id):
-#     """Update user's avatar"""
-#     user = db.session.query(User).filter_by(id=id).first()
-#     if not user or g.user == None:
-#         return error("Invalid id")
-#     elif(user.id == g.user.id):
-#         files = request.files['avatar']
-#         size = (256,256)
-#         im = Image.open(avatar)
-#         im.thumbnail(size)
-#         if avatar and allow_file(avatar.filename):
-#             try:
-#                 #file.save(os.path.join("./static/uploads/",avatar.filename))
-#                 #user.avatar=os.path.join("./static/uploads/",avatar.filename)
-#                 db.session.commit()
-#             except:
-#                 return error("Failed to save the picture")
-#         else:
-#             return error("Unsafe file type")
-#         return success()
-#     return success(user.to_json())
-
-# --------------------------
+@app.route("/users/<id>/projects/new", methods=["POST"])
+def users_projects_new(id):
+    """Create new user project"""
+    if(g.user == None):
+        return unauthorized()
+    with open("default.json", "rb") as default_project:
+        file_md5 = hashlib.md5(default_project.read()).hexdigest()
+        with open(os.path.join(COMMITS_FOLDER, file_md5), "wb") as new_file:
+            new_file.write(default_project.read())
+            new_file.flush()
+    new_project = Project(
+        _author=g.user.id,
+        _head=file_md5
+    )
+    db.session.add(new_project)
+    db.session.flush()
+    new_commit = Commit(
+        hash=file_md5,
+        time=int(time.time()),
+        _author=g.user.id,
+        _project_id=new_project.id
+    )
+    db.session.add(new_commit)
+    db.session.flush()
+    db.session.commit()
+    return success({"id": new_project.id})
 
 
 @app.route("/projects/<id>/info", methods=["GET"])
@@ -280,9 +272,9 @@ def projects_operation(id):
         return error("Invalid id")
     if not g.user:
         return unauthorized()
-    operation_type=request.json['type']
+    operation_type = request.json['type']
     if(operation_type in ['project.view', 'project.star', 'project.like']):
-        operation=User_Operation.query.filter_by(
+        operation = User_Operation.query.filter_by(
             _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)  # project.view, project.star, project.like
         if(operation.count() > 0):
             operation.delete()
@@ -303,7 +295,7 @@ def projects_info_update(id):
     project = db.session.query(Project).filter_by(id=id).first()
     if not project or g.user == None:
         return error("Invalid id")
-    elif(project.id == g.user.id):
+    elif(project.author.id == g.user.id):
         if 'title' in request.json:
             project.title = request.json['title']
         if 'readme' in request.json:
@@ -317,6 +309,53 @@ def projects_info_update(id):
         db.session.commit()
         return success()
     return unauthorized()
+
+
+@app.route("/projects/<id>/json", methods=["GET"])
+def projects_json(id):
+    """Get project source"""
+    commit_hash = request.args.get("commit")
+    project = db.session.query(Project).filter_by(id=id).first()
+    if not project:
+        return error("Invalid id")
+    if(commit_hash == None):
+        commit_hash = project.head.hash
+    commit = db.session.query(Commit).filter_by(
+        _project_id=id, hash=commit_hash)
+    if not commit:
+        return error("Invalid commit")
+    return send_from_directory(COMMITS_FOLDER, commit_hash)
+
+
+@app.route("/projects/<id>/json", methods=["POST"])
+def projects_json_commit(id):
+    """Update project source"""
+    project = db.session.query(Project).filter_by(id=id).first()
+    if not project:
+        return error("Invalid id")
+    f = request.files['file']
+    md5 = hashlib.md5(f.read()).hexdigest()
+    filename = md5
+    filepath = os.path.join(COMMITS_FOLDER, filename)
+    if not os.path.isfile(filepath):
+        f.seek(0)
+        f.save(filepath)
+    new_commit = Commit(
+        hash=md5,
+        time=int(time.time()),
+        _author=g.user.id,
+        _project_id=id
+    )
+    db.session.add(new_commit)
+    return success({'filename': filename})
+    if(commit_hash == None):
+        commit_hash = project.head.hash
+    commit = db.session.query(Commit).filter_by(
+        _project_id=id, hash=commit_hash)
+    if not commit:
+        return error("Invalid commit")
+    return send_from_directory(COMMITS_FOLDER, commit_hash)
+
 
 def getComments(target_type, target_id, args):
     pageSize = 10  # once this value is changed, the database should be reset
@@ -351,7 +390,10 @@ def newComment(target_type, target_id, request_json):
 
 
 def updateComment(target_type, target_id, request_json):
-    user = db.session.query(User).filter_by(id=target_id).first()
+    if(target_type == 'user'):
+        user = db.session.query(User).filter_by(id=target_id).first()
+    elif(target_type == 'project'):
+        user = db.session.query(Project).filter_by(id=target_id).first().author
     if not user or g.user == None:
         return error("Invalid id")
     elif(user.id == g.user.id):
@@ -404,17 +446,19 @@ def projects_comments_update(id):
     """Update comment"""
     return updateComment(target_type='project', target_id=id, request_json=request.json)
 
+
 @app.route('/assets/upload', methods=['POST'])
 def assets_upload():
-        f = request.files['file']
-        ext = f.filename.rsplit('.', 1)[1]
-        md5 = hashlib.md5(f.read()).hexdigest()
-        filename = md5 + '.' + ext
-        filepath=os.path.join(ASSETS_FOLDER, filename)
-        if not os.path.isfile(filepath):
-            f.seek(0)
-            f.save(filepath)
-        return success({'filename': filename})
+    f = request.files['file']
+    ext = f.filename.rsplit('.', 1)[1]
+    md5 = hashlib.md5(f.read()).hexdigest()
+    filename = md5 + '.' + ext
+    filepath = os.path.join(ASSETS_FOLDER, filename)
+    if not os.path.isfile(filepath):
+        f.seek(0)
+        f.save(filepath)
+    return success({'filename': filename})
+
 
 @app.route('/assets/<filename>', methods=['GET'])
 def assets_get(filename):

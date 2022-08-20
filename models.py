@@ -1,6 +1,8 @@
 # from sqlalchemy import db.Column, ForeignKey, db.Integer, db.String
 # from sqlalchemy.orm import relationship
+import json
 from email.policy import default
+
 import bcrypt
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -70,23 +72,63 @@ class User(db.Model):
         return bcrypt.checkpw(value.encode(), self._password.encode())
 
 
+class Commit(db.Model):
+    __tablename__ = "commits"
+
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    hash = db.Column(db.String, index=True)
+    message = db.Column(db.String, default="Init")
+    time = db.Column(db.Integer)
+    type = db.Column(db.String, default="commit")  # autosave, commit
+    thumbnail = db.Column(db.String, default="")
+    _parents = db.Column(db.String, default="[]")
+    _project_id = db.Column(db.Integer)
+    _author = db.Column(db.Integer)
+
+    @hybrid_property
+    def author(self):
+        return User.query.filter_by(id=self._author).first()
+
+    @hybrid_property
+    def parents(self):
+        return json.loads(self._parents)
+
+    @hybrid_property
+    def project(self):
+        return Project.query.filter_by(id=self._project_id).first()
+
+    def to_json(self, project=False):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            del json['_author']
+            json["author"] = self.author.to_json()
+            del json['_project_id']
+            if(project):
+                json["project"] = self.project.to_json()
+            del json['_parents']
+            json["parents"] = self.parents
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
+
+
 class Project(db.Model):
     __tablename__ = "projects"
 
     id = db.Column(db.Integer, primary_key=True, index=True)
-    title = db.Column(db.String, index=True)
-    readme = db.Column(db.String, index=True)
+    title = db.Column(db.String, index=True, default='未命名作品')
+    readme = db.Column(db.String, index=True, default='')
     public = db.Column(db.Integer, default=0)  # 0: private, 1: public
     source = db.Column(db.Integer, default=0)  # 0: open, 1: readonly, 2: close
     # 0: normal, 1: deleted, 2: archived
     status = db.Column(db.Integer, default=0)
     _author = db.Column(db.Integer)  # user id
-    created_at = db.Column(db.Integer)
-    updated_at = db.Column(db.Integer)
+    _head = db.Column(db.String)  # commit hash
 
     @hybrid_property
     def author(self):
-        return User.query.filter_by(id=self._author).first().to_json()
+        return User.query.filter_by(id=self._author).first()
 
     @hybrid_property
     def like(self):
@@ -115,18 +157,29 @@ class Project(db.Model):
             return False
         return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view", _user=user.id).count() > 0
 
+    @hybrid_property
+    def head(self):
+        return Commit.query.filter_by(hash=self._head, _project_id=self.id).first()
+
+    @hybrid_property
+    def totalCommits(self):
+        return Commit.query.filter_by(_project_id=self.id).count()
+
     def to_json(self, user=None):
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
                     for i in self.__table__.columns}
             del json['_author']
-            json["author"] = self.author
+            json["author"] = self.author.to_json()
             json['like'] = self.like
             json['star'] = self.star
             json['view'] = self.view
             json['is_liked'] = self.is_liked(user)
             json['is_starred'] = self.is_starred(user)
             json['is_viewed'] = self.is_viewed(user)
+            json['totalCommits'] = self.totalCommits
+            del json['_head']
+            json["head"] = self.head.to_json(project=False)
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
