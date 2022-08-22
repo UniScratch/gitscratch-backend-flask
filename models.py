@@ -185,6 +185,32 @@ class Project(db.Model):
             '<%r> does not have attribute for __table__' % self)
 
 
+class Post(db.Model):
+    __tablename__ = 'posts'
+
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    title = db.Column(db.String, default="")
+    content = db.Column(db.String, default="")
+    status = db.Column(db.Integer, default=0)  # 0: private, 1: public
+    _user = db.Column(db.Integer)  # user id
+    created_at = db.Column(db.Integer)
+    updated_at = db.Column(db.Integer)
+
+    @hybrid_property
+    def user(self):
+        return User.query.filter_by(id=self._user).first().to_json()
+
+    def to_json(self):
+        if hasattr(self, '__table__'):
+            json = {i.name: getattr(self, i.name)
+                    for i in self.__table__.columns}
+            del json['_user']
+            json["user"] = self.user
+            return json
+        raise AssertionError(
+            '<%r> does not have attribute for __table__' % self)
+
+
 class User_Operation(db.Model):
     __tablename__ = "user_operations"
 

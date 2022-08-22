@@ -357,6 +357,48 @@ def projects_json_commit(id):
     return send_from_directory(COMMITS_FOLDER, commit_hash)
 
 
+@app.route("/users/<id>/posts/new", methods=["POST"])
+def users_posts_new(id):
+    """Create new user post"""
+    if(g.user == None):
+        return unauthorized()
+    new_post = Post(
+        _user=g.user.id,
+        created_at=int(time.time())
+    )
+    db.session.add(new_post)
+    db.session.commit()
+    return success({"id": new_post.id})
+
+
+@app.route("/posts/<id>/info", methods=["GET"])
+def posts_info(id):
+    """Get post info"""
+    post = db.session.query(Post).filter_by(id=id).first()
+    if not post:
+        return error("Invalid id")
+    return success(post.to_json())
+
+
+@app.route("/posts/<id>/info", methods=["POST"])
+def posts_info_update(id):
+    """Update post info"""
+    post = db.session.query(Post).filter_by(id=id).first()
+    if not post or g.user == None:
+        return error("Invalid id")
+    elif(post._user == g.user.id):
+        if 'title' in request.json:
+            post.title = request.json['title']
+        if 'content' in request.json:
+            post.content = request.json['content']
+        if 'status' in request.json:
+            post.status = request.json['status']
+        post.updated_at = int(time.time())
+        db.session.commit()
+        return success()
+    return unauthorized()
+
+
 def getComments(target_type, target_id, args):
     pageSize = 10  # once this value is changed, the database should be reset
     query = db.session.query(Comment).filter_by(target_type=target_type, target_id=target_id).order_by(
@@ -445,6 +487,24 @@ def projects_comments_new(id):
 def projects_comments_update(id):
     """Update comment"""
     return updateComment(target_type='project', target_id=id, request_json=request.json)
+
+
+@app.route("/forum/<id>/comments", methods=["GET"])
+def posts_comments(id):
+    """Get post comments"""
+    return getComments(target_type="post", target_id=id, args=request.args)
+
+
+@app.route("/forum/<id>/comments/new", methods=["POST"])
+def posts_comments_new(id):
+    """Create new comment"""
+    return newComment(target_type='post', target_id=id, request_json=request.json)
+
+
+@app.route("/forum/<id>/comments", methods=["POST"])
+def posts_comments_update(id):
+    """Update comment"""
+    return updateComment(target_type='post', target_id=id, request_json=request.json)
 
 
 @app.route('/assets/upload', methods=['POST'])
