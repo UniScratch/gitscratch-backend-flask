@@ -191,6 +191,7 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True, index=True)
     title = db.Column(db.String, default="")
     content = db.Column(db.String, default="")
+    page_id = db.Column(db.Integer)
     status = db.Column(db.Integer, default=0)  # 0: private, 1: public
     _user = db.Column(db.Integer)  # user id
     created_at = db.Column(db.Integer)

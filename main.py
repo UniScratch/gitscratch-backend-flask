@@ -357,6 +357,38 @@ def projects_json_commit(id):
     return send_from_directory(COMMITS_FOLDER, commit_hash)
 
 
+# def getPosts(target_id):
+#     # query = db.session.query(Project).filter_by(_author=target_id).order_by(
+#     #     Project.created_at)
+#     query = db.session.query(Post).filter_by(_user=target_id)
+#     posts = query.all()
+#     _posts = [post.to_json() for post in posts]
+#     # print(time.time()-startTime)
+#     return success({'posts': _posts, 'totalPosts': query.count()})
+def getPosts():
+    query = db.session.query(Post).filter_by(id > 1 , _user = 1)
+    _posts = [post.to_json() for post in query.all()]
+    return success({'posts':_posts})
+    # 需要重构分页算法
+    # 传入一个时间戳 缺省值为当前时间
+    # 返回时间戳前最近的n篇帖子
+    # 要加载下一页只需要传入n篇中的最后一篇的时间戳
+    # 也可以传入时间范围 比如要获取最新的帖子
+    # 只要传回已加载的最新一篇的时间戳 查找更新的帖子
+    # 其他接口同理 比如获取作品啊 获取评论之类
+    
+    # pageSize = 10  # once this value is changed, the database should be reset
+    # query = db.session.query(Post).filter_by(_user=target_id).order_by(
+    #     Post.created_at)
+    # pageId = int(args['pageId']
+    #              ) if 'pageId' in args else query.paginate(per_page=10, error_out=False).pages
+    # pagination = query.paginate(page=pageId, per_page=10, error_out=False)
+    # posts = pagination.items
+    # _posts = [post.to_json() for post in posts]
+    # # print(time.time()-startTime)
+    # return success({'posts': _posts, 'pageId': pageId, 'pageSize': pageSize, 'totalPages': pagination.pages, 'totalPosts': query.count()})
+
+
 @app.route("/users/<id>/posts/new", methods=["POST"])
 def users_posts_new(id):
     """Create new user post"""
@@ -364,12 +396,17 @@ def users_posts_new(id):
         return unauthorized()
     new_post = Post(
         _user=g.user.id,
+        page_id=db.session.query(Post).order_by(
+            Post.time).count()//10+1,
         created_at=int(time.time())
     )
     db.session.add(new_post)
     db.session.commit()
     return success({"id": new_post.id})
 
+@app.route("/posts",methods=['GET'])
+def posts_get():
+    return getPosts()
 
 @app.route("/posts/<id>/info", methods=["GET"])
 def posts_info(id):
