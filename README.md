@@ -15,7 +15,7 @@ sh ./start_prod.sh
 ```
 
 ## 调试 / Debugging
-特别的，如果你想以开发环境运行：
+特别地，如果你想以开发环境运行：
 
 ```shell
 sh ./start_dev.sh
