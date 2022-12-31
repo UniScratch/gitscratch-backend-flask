@@ -54,15 +54,14 @@ def index():
     """For test only"""
     if g.user:
         return g.user.name
-    else:
-        return success()
+    return success()
 
 
 @app.before_request
 def load_logged_in_user():
     """Check if user is logged in"""
     # print(request.headers)
-    if ('X-Real-IP' in request.headers):
+    if 'X-Real-IP' in request.headers:
         g.ip = request.headers['X-Real-IP']
     else:
         g.ip = request.remote_addr
@@ -164,8 +163,7 @@ def auth_session():
     """Get user session"""
     if g.user:
         return success({'data': g.user.to_json()})
-    else:
-        return unauthorized()
+    return unauthorized()
 
 
 @app.route("/auth/logout", methods=["POST"])
@@ -273,19 +271,18 @@ def projects_operation(id):
     if not g.user:
         return unauthorized()
     operation_type = request.json['type']
-    if(operation_type in ['project.view', 'project.star', 'project.like']):
+    if (operation_type in ['project.view', 'project.star', 'project.like']):
         operation = User_Operation.query.filter_by(
             _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)  # project.view, project.star, project.like
-        if(operation.count() > 0):
+        if operation.count() > 0:
             operation.delete()
             db.session.commit()
             return success()
-        else:
-            operation = User_Operation(
-                _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)
-            db.session.add(operation)
-            db.session.commit()
-            return success()
+        operation = User_Operation(
+            _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)
+        db.session.add(operation)
+        db.session.commit()
+        return success()
     return error("Invalid operation type")
 
 
@@ -295,7 +292,7 @@ def projects_info_update(id):
     project = db.session.query(Project).filter_by(id=id).first()
     if not project or g.user == None:
         return error("Invalid id")
-    elif(project.author.id == g.user.id):
+    elif project.author.id == g.user.id:
         if 'title' in request.json:
             project.title = request.json['title']
         if 'readme' in request.json:
@@ -318,7 +315,7 @@ def projects_json(id):
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
         return error("Invalid id")
-    if(commit_hash == None):
+    if commit_hash is None:
         commit_hash = project.head.hash
     commit = db.session.query(Commit).filter_by(
         _project_id=id, hash=commit_hash)
@@ -423,7 +420,7 @@ def posts_info_update(id):
     post = db.session.query(Post).filter_by(id=id).first()
     if not post or g.user == None:
         return error("Invalid id")
-    elif(post._user == g.user.id):
+    elif post._user == g.user.id:
         if 'title' in request.json:
             post.title = request.json['title']
         if 'content' in request.json:
@@ -450,7 +447,7 @@ def getComments(target_type, target_id, args):
 
 
 def newComment(target_type, target_id, request_json):
-    if(g.user == None):
+    if g.user is None:
         return unauthorized()
     db.session.add(Comment(
         comment=request_json['comment'],
@@ -469,24 +466,23 @@ def newComment(target_type, target_id, request_json):
 
 
 def updateComment(target_type, target_id, request_json):
-    if(target_type == 'user'):
+    if target_type == 'user':
         user = db.session.query(User).filter_by(id=target_id).first()
-    elif(target_type == 'project'):
+    elif target_type == 'project':
         user = db.session.query(Project).filter_by(id=target_id).first().author
-    if not user or g.user == None:
+    if not user or g.user is None:
         return error("Invalid id")
-    elif(user.id == g.user.id):
+    if user.id == g.user.id:
         comment_id = request_json['id']
         comment = db.session.query(Comment).filter_by(id=comment_id).first()
         if not comment:
             return error("Invalid comment id")
-        else:
-            if('comment' in request_json):
-                comment.comment = request_json['comment']
-            if('status' in request_json):
-                comment.status = request_json['status']
-            db.session.commit()
-            return success()
+        if 'comment' in request_json:
+            comment.comment = request_json['comment']
+        if 'status' in request_json:
+            comment.status = request_json['status']
+        db.session.commit()
+        return success()
     return unauthorized()
 
 
@@ -568,7 +564,7 @@ def apply_caching(response):
     response.headers["Access-Control-Allow-Method"] = "*"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Server"] = "Python with Super Cow Powers"
-    if (g.user == None):
+    if g.user is None:
         response.headers['X-GitScratch-User'] = 'None'
     return response
 
