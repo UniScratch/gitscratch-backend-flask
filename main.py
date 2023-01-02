@@ -42,6 +42,13 @@ def unauthorized(message="Unauthorized"):
     ), 401
 
 
+def not_found(message="Not found"):
+    return json.dumps({
+        "status": "error",
+        "message": message
+    }), 404
+
+
 def success(data=None):
     return json.dumps(
         {"status": "success",
@@ -181,7 +188,7 @@ def users_info(id):
     """Get user info"""
     user = db.session.query(User).filter_by(id=id).first()
     if not user:
-        return error("Invalid id")
+        return not_found("User does not exist")
     return success(user.to_json())
 
 
@@ -190,7 +197,7 @@ def users_info_update(id):
     """Update user info"""
     user = db.session.query(User).filter_by(id=id).first()
     if not user or g.user == None:
-        return error("Invalid id")
+        return not_found("User does not exist")
     elif(user.id == g.user.id):
         if 'name' in request.json:
             user.name = request.json['name']
@@ -258,7 +265,7 @@ def projects_info(id):
     """Get project info"""
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
-        return error("Invalid id")
+        return not_found("Project does not exist")
     return success(project.to_json(user=g.user))
 
 
@@ -267,7 +274,7 @@ def projects_operation(id):
     """Add project operation"""
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
-        return error("Invalid id")
+        return not_found("Project does not exist")
     if not g.user:
         return unauthorized()
     operation_type = request.json['type']
@@ -290,8 +297,8 @@ def projects_operation(id):
 def projects_info_update(id):
     """Update project info"""
     project = db.session.query(Project).filter_by(id=id).first()
-    if not project or g.user == None:
-        return error("Invalid id")
+    if not project or g.user is None:
+        return not_found("Project does not exist")
     elif project.author.id == g.user.id:
         if 'title' in request.json:
             project.title = request.json['title']
@@ -314,7 +321,7 @@ def projects_json(id):
     commit_hash = request.args.get("commit")
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
-        return error("Invalid id")
+        return not_found("Project does not exist")
     if commit_hash is None:
         commit_hash = project.head.hash
     commit = db.session.query(Commit).filter_by(
@@ -329,7 +336,7 @@ def projects_json_commit(id):
     """Update project source"""
     project = db.session.query(Project).filter_by(id=id).first()
     if not project:
-        return error("Invalid id")
+        return not_found("Project does not exist")
     f = request.files['file']
     md5 = hashlib.md5(f.read()).hexdigest()
     filename = md5
