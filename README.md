@@ -2,6 +2,8 @@
 
 GitScratch 的社区后端。
 
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
+
 ## 安装依赖 / Installing Requirements
 ```shell
 pip install -r requirements.txt
