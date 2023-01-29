@@ -23,6 +23,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, index=True)
     name = db.Column(db.String)
     email = db.Column(db.String, unique=True, index=True)
+    email_shown = db.Column(db.Boolean, default=False)
     tag = db.Column(db.String, default="")
     tag_color = db.Column(db.String, default="#2196F3")
     follower = db.Column(db.Integer, default=0)
@@ -44,7 +45,7 @@ class User(db.Model):
     _session_time = db.Column(db.Integer)
     # projects = db.Column(db.ForeignKey(Project.))
 
-    def to_json(self):
+    def to_json(self, is_user=False):
         """Return user info as json."""
         if hasattr(self, '__table__'):
             json = {i.name: getattr(self, i.name)
@@ -52,6 +53,8 @@ class User(db.Model):
             del json['_password']
             del json['_session']
             del json['_session_time']
+            if not (json['email_shown'] or is_user):
+                del json['email']
             return json
         raise AssertionError(
             '<%r> does not have attribute for __table__' % self)
@@ -123,6 +126,7 @@ class Project(db.Model):
     source = db.Column(db.Integer, default=0)  # 0: open, 1: readonly, 2: close
     # 0: normal, 1: deleted, 2: archived
     status = db.Column(db.Integer, default=0)
+    banned = db.Column(db.Boolean, default=False)
     _author = db.Column(db.Integer)  # user id
     _head = db.Column(db.String)  # commit hash
 
@@ -132,30 +136,30 @@ class Project(db.Model):
 
     @hybrid_property
     def like(self):
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like").count()
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like").count()
 
     def is_liked(self, user=None):
         if user is None:
             return False
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like", _user=user.id).count() > 0
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.like", _user=user.id).count() > 0
 
     @hybrid_property
     def star(self):
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star").count()
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star").count()
 
     def is_starred(self, user=None):
         if user is None:
             return False
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star", _user=user.id).count() > 0
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.star", _user=user.id).count() > 0
 
     @hybrid_property
     def view(self):
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view").count()
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view").count()
 
     def is_viewed(self, user=None):
         if user is None:
             return False
-        return User_Operation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view", _user=user.id).count() > 0
+        return UserOperation.query.filter_by(_target_type="project", _target_id=self.id, type="project.view", _user=user.id).count() > 0
 
     @hybrid_property
     def head(self):
@@ -212,7 +216,7 @@ class Post(db.Model):
             '<%r> does not have attribute for __table__' % self)
 
 
-class User_Operation(db.Model):
+class UserOperation(db.Model):
     __tablename__ = "user_operations"
 
     id = db.Column(db.Integer, primary_key=True, index=True)

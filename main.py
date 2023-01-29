@@ -16,6 +16,9 @@ from captcha import captcha
 
 from gitscratch_init import app, db
 
+from flask_migrate import Migrate
+migrate = Migrate(app, db)
+
 geoip2reader = geoip2.database.Reader(
     'geolite2/GeoLite2-City.mmdb')
 
@@ -169,7 +172,7 @@ def auth_login():
 def auth_session():
     """Get user session"""
     if g.user:
-        return success({'data': g.user.to_json()})
+        return success({'data': g.user.to_json(is_user=True)})
     return unauthorized()
 
 
@@ -189,6 +192,8 @@ def users_info(id):
     user = db.session.query(User).filter_by(id=id).first()
     if not user:
         return not_found("User does not exist")
+    if g.user.id == id:
+        return success(user.to_json(is_user=True))
     return success(user.to_json())
 
 
@@ -279,13 +284,13 @@ def projects_operation(id):
         return unauthorized()
     operation_type = request.json['type']
     if (operation_type in ['project.view', 'project.star', 'project.like']):
-        operation = User_Operation.query.filter_by(
+        operation = UserOperation.query.filter_by(
             _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)  # project.view, project.star, project.like
         if operation.count() > 0:
             operation.delete()
             db.session.commit()
             return success()
-        operation = User_Operation(
+        operation = UserOperation(
             _target_type="project", _target_id=id, type=operation_type, _user=g.user.id)
         db.session.add(operation)
         db.session.commit()
